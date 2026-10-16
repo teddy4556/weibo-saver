@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>收起抓手 · 配色对比</title>
+<style>
+  body{margin:0;background:#f5f6f8;font:14px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;padding:36px}
+  h1{font-size:20px;margin:0 0 6px;color:#222}
+  .sub{color:#888;font-size:13px;margin-bottom:28px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;max-width:1000px}
+  .card{background:#fff;border-radius:14px;padding:22px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .card h2{font-size:15px;margin:0 0 4px;color:#333}
+  .card p{font-size:12.5px;color:#888;margin:0 0 18px}
+  /* 模拟收起态：深色面板左下角 + 抓手 */
+  .scene{
+    position:relative;height:150px;border-radius:10px;
+    background:linear-gradient(135deg,#e9eaed,#dfe1e5);
+    overflow:hidden;
+  }
+  .panel{
+    position:absolute;left:14px;bottom:14px;
+    background:rgba(28,28,32,.92);border-radius:14px;
+    padding:10px 12px;width:180px;
+  }
+  .panel .r{display:flex;gap:5px;flex-wrap:wrap}
+  .chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+        border-radius:999px;padding:3px 8px;font-size:10px;color:rgba(255,255,255,.55)}
+  .chip.on{background:rgba(230,22,45,.16);border-color:rgba(230,22,45,.5);color:#fff}
+  .chip.main{background:#e6162d;border-color:transparent;color:#fff;font-weight:600}
+
+  /* 旧版：半透明红方块 */
+  .old::after{
+    content:"";position:absolute;left:0;bottom:0;width:16px;height:16px;
+    background:#e6162d;border-radius:0 8px 0 0;opacity:.5;
+  }
+  /* 新版：黄底红边 */
+  .new::after{
+    content:"";position:absolute;left:0;bottom:0;width:22px;height:22px;
+    background:linear-gradient(135deg,#ffc300,#ff8200);
+    border:2px solid #e6162d;border-radius:0 9px 0 9px;
+    box-shadow:0 2px 10px rgba(255,130,0,.5),0 0 0 1px rgba(0,0,0,.12);
+  }
+  .verdict{margin-top:12px;font-size:12.5px;padding:8px 10px;border-radius:8px}
+  .bad{background:#fef2f2;color:#b91c1c}
+  .good{background:#f0fdf4;color:#15803d}
+  .stats{margin-top:28px;max-width:1000px;background:#fff;border-radius:12px;padding:20px}
+  .stats h3{margin:0 0 12px;font-size:15px;color:#333}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{padding:7px 10px;text-align:left;border-bottom:1px solid #f0f0f0}
+  th{color:#888;font-weight:600;font-size:12px}
+  code{background:#f4f4f5;padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+
+<h1>收起抓手 · 配色对比</h1>
+<div class="sub">你反馈「左下的红和黑差别不明显」 —— 左旧右新</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>旧版</h2>
+    <p>纯红方块 16px，opacity .5</p>
+    <div class="scene old">
+      <div class="panel">
+        <div class="r">
+          <span class="chip on">✔卡片按钮</span>
+          <span class="chip main">📦 批量下载</span>
+        </div>
+        <div class="r" style="margin-top:6px">
+          <span class="chip on">✔超清图</span>
+          <span class="chip">❌打包</span>
+        </div>
+      </div>
+    </div>
+    <div class="verdict bad">
+      ✗ 半透明红压在深色面板（rgba(28,28,32,.92)）上 = 暗红，
+      跟面板黑几乎融成一片，看不出「这里能点回来」
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>新版</h2>
+    <p>微博黄底 + 红描边，22px，不透明</p>
+    <div class="scene new">
+      <div class="panel">
+        <div class="r">
+          <span class="chip on">✔卡片按钮</span>
+          <span class="chip main">📦 批量下载</span>
+        </div>
+        <div class="r" style="margin-top:6px">
+          <span class="chip on">✔超清图</span>
+          <span class="chip">❌打包</span>
+        </div>
+      </div>
+    </div>
+    <div class="verdict good">
+      ✓ 微博品牌黄（同源页头 logo）在白底深底都跳得出来，
+      红只做描边 → 双色对比，辨识度最高
+    </div>
+  </div>
+</div>
+
+<div class="stats">
+  <h3>为什么选黄</h3>
+  <table>
+    <tr><th>方案</th><th>深色面板上</th><th>微博白底上</th><th>会不会跟红按钮混淆</th></tr>
+    <tr><td>半透明红方块（旧）</td><td>❌ 融进黑色</td><td>⚠ 一般</td><td>会</td></tr>
+    <tr><td>实心红方块</td><td>✅ 看得见</td><td>✅ 看得见</td><td>❌ 会，跟下载按钮撞</td></tr>
+    <tr><td>纯黄方块</td><td>✅ 很跳</td><td>✅ 很跳</td><td>✅ 不会</td></tr>
+    <tr><td><b>黄底红边</b>（新）</td><td><b>✅ 最跳</b></td><td><b>✅ 最跳</b></td><td><b>✅ 不会</b></td></tr>
+  </table>
+  <p style="margin:14px 0 0;font-size:12.5px;color:#666">
+    另外尺寸 16→<code>22px</code>、加了圆角和橙色投影、hover 会放大 8%。
+    22px 在左下角不挡微博内容，但一眼能看见。
+  </p>
+</div>
+
+<div class="stats" style="margin-top:20px">
+  <h3>顺带修的：历史只显示最近 6 条</h3>
+  <p style="font-size:13px;color:#666;margin:0 0 10px">
+    之前三处各写各的、还互相对不上：
+  </p>
+  <table>
+    <tr><th>层</th><th>原来</th><th>现在</th></tr>
+    <tr><td>显示层</td><td><code>clamp(cfg.messagesNumber, 3, 40)</code></td><td><code>HISTORY_MAX = 6</code></td></tr>
+    <tr><td>内存层 Map</td><td><b>只增不减</b>（滚一天几百条）</td><td>超限主动淘汰</td></tr>
+    <tr><td>持久层</td><td><code>slice(-20)</code> ← 跟显示层无关</td><td><code>slice(-HISTORY_MAX)</code></td></tr>
+  </table>
+  <p style="margin:14px 0 0;font-size:12.5px;color:#666">
+    淘汰规则：<b>进行中的任务永不删</b>，只淘汰已完成的，且只留最新 6 条。
+  </p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,9 @@
+# 历史版本不进仓库 —— git 本身就是版本管理，
+# 34 份累积快照（4.2MB）会让仓库无谓膨胀，且每次改动都全量重传。
+# 需要回溯某版时用 git log / git show 即可。
+versions/
+
+# 本地临时产物
+*.log
+.DS_Store
+node_modules/
