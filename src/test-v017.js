@@ -1,6 +1,6 @@
 // v0.1.7 回归：面板位置（左上 → 左下）+ 按钮位置（左上 → 右下）
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 
 let pass = 0, fail = 0;
@@ -48,7 +48,8 @@ check('诊断菜单', /🩺 卡片识别诊断/.test(src));
 console.log('\n═══ 版本 & 老功能 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本号两处一致', vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.7 历史记录', /v0\.1\.7 变更/.test(src));
 check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
 check('GM_download 仍在', /@grant\s+GM_download/.test(src));

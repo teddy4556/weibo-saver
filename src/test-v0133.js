@@ -1,6 +1,6 @@
 // v0.1.33 回归：历史限 6 条（三层收口）+ 收起抓手改双色
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 const L = src.split('\n');
 const codeOnly = L.filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
@@ -115,7 +115,8 @@ console.log('\n═══ ④ 前六版修复未回退 ═══');
 console.log('\n═══ ⑤ 版本 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本 0.1.33 两处一致', vMeta === '0.1.33' && vConst === '0.1.33', `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.33 记录', /v0\.1\.33/.test(src));
 
 console.log(`\n${'═'.repeat(46)}`);

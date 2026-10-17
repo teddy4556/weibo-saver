@@ -1,6 +1,6 @@
 // v0.1.10 回归：修复 .mp4-live.bin 假扩展名
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 const codeOnly = src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
 
@@ -71,7 +71,8 @@ console.log('\n═══ 端到端命名链（真跑）═══');
 console.log('\n═══ 版本 & 老功能 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本号两处一致', vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.10 历史记录', /v0\.1\.10 变更/.test(src));
 check('命名模板默认值未动', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
 check('落盘错峰未动', /i \+= batchSize/.test(src));

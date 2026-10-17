@@ -4,7 +4,7 @@
 //  ② 直落判定排在 fetchBlob 之后 → 先白下几 MB 才交给 GM_download
 //  ③ extOf 二次推导覆盖 item.ext → 文件名退回「#00」
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 const codeOnly = src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
 const L = src.split('\n');
@@ -141,7 +141,8 @@ check('零 @require', !/^\/\/ @require/m.test(src));
 console.log('\n═══ 版本 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本号两处一致', vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.29 记录', /v0\.1\.29/.test(src));
 
 console.log(`\n${'═'.repeat(46)}`);

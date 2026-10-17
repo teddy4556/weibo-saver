@@ -2,7 +2,7 @@
 // 加载方式：剥掉 IIFE 包裹后整体执行，让所有函数在同一作用域互相可见
 // （逐函数 eval 的坑：eval 里 const 作用域独立，交叉引用全断）
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 
 let pass = 0, fail = 0;
@@ -117,7 +117,8 @@ check('恢复默认菜单', /GM_registerMenuCommand\('↩️ 恢复默认命名�
 console.log('\n═══ 版本 & 静态 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本号两处一致', vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有版本变更记录', /v0\.1\.\d+ 变更/.test(src));
 check('零 @require', !/^\/\/ @require/m.test(src));
 check('GM_download grant 仍在', /@grant\s+GM_download/.test(src));

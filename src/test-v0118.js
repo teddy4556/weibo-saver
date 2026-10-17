@@ -1,6 +1,6 @@
 // v0.1.18 回归：修复 v0.1.16 引入的「卡片按钮全部消失」
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 const codeOnly = src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
 
@@ -96,7 +96,8 @@ console.log('\n═══ 视口未知时不崩 ═══');
 console.log('\n═══ 版本 & 老功能 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本号两处一致', vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.18 历史记录', /v0\.1\.18 变更/.test(src));
 check('头部有 v0.1.18 记录', /v0\.1\.18 变更/.test(src));
 check('v0.1.16 去嵌套仍在（已修方向）', /const deduped = \[\]/.test(src));

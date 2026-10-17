@@ -1,6 +1,6 @@
 // v0.1.15 回归：下载入口收敛为一个（右下角常驻）
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 const codeOnly = src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
 
@@ -60,7 +60,8 @@ check('不再引用已删变量', !/tapLabels/.test(codeOnly) && !/labelsVisible
 console.log('\n═══ 版本 & 老功能 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本号两处一致', vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
     check('头部有 v0.1.15 历史记录', /v0\.1\.15 变更/.test(src));
 check('头部有 v0.1.15 记录', /v0\.1\.15 变更/.test(src));
 check('三路识别未坏', /DIAG\.href/.test(src) && /DIAG\.attr/.test(src) && /DIAG\.media/.test(src));

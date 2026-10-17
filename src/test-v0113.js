@@ -3,7 +3,7 @@
 //       v0.1.15 用户要求「去掉头像右侧的下载按钮，只保留右下角一个」，
 //       该机制连同 findCardLink / looksLikeTimestamp 一并删除。
 const fs = require('fs');
-const src = fs.readFileSync('/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js', 'utf8');
+const src = fs.readFileSync(require('./_target.js').TARGET, 'utf8');
 const codeOnly = src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
 
 let pass = 0, fail = 0;

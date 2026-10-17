@@ -1,6 +1,6 @@
 // v0.1.2 回归：落盘链路（GM_download 绕开 Chrome 自动下载闸）
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 
 let pass = 0, fail = 0;

@@ -1,6 +1,6 @@
 // v0.1.14 回归：修复单视频下载失败
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 const codeOnly = src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
 
@@ -79,9 +79,14 @@ check('pickVideoByUrlMap 命中时打日志', /pickVideoByUrlMap: 键=/.test(src
 console.log('\n═══ 版本 & 老功能 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本 0.1.14 两处一致', vMeta === '0.1.14' && vConst === '0.1.14', `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.14 记录', /v0\.1\.14 变更/.test(src));
-check('下载标签机制未坏', /function injectTapLabel/.test(src));
+// v0.1.16 起 injectTapLabel（点时间戳即下载）整套机制已主动删除
+// —— 见 src 头部「v0.1.16 变更：injectTapLabel / findCardLink / looksLikeTimestamp 等相关代码一并清除」。
+// 改成反向断言：确认它确实不在了，且替代路径（卡片右下角常驻按钮）在。
+check('injectTapLabel 已彻底移除（v0.1.16 删除）', !/function injectTapLabel/.test(codeOnly));
+check('替代机制：卡片右下角常驻按钮在', /function injectCardButtons/.test(codeOnly));
 check('三路识别未坏', /DIAG\.href/.test(src) && /DIAG\.attr/.test(src) && /DIAG\.media/.test(src));
 check('live 命名修复未坏', src.includes("+ `-live.${ext}`"));
 check('落盘错峰未坏', /i \+= batchSize/.test(src));

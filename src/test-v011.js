@@ -1,6 +1,6 @@
 // v0.1.1 回归测试：针对本次两个修复
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 
 let pass = 0, fail = 0;

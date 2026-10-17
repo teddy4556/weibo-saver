@@ -3,7 +3,7 @@
 //  ① 每个面板开关 / 按钮 / 油猴菜单都必须「点了有反应、存了配置、影响行为」
 //  ② UI 美化只改视觉层，id / 类名 / 行为绑定一个都不能动
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 const L = src.split('\n');
 const codeOnly = L.filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
@@ -223,7 +223,8 @@ console.log('\n═══ ⑦ 前五版修复未回退 ═══');
 console.log('\n═══ ⑧ 版本 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本号两处一致', vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.32 记录', /v0\.1\.32/.test(src));
 
 console.log(`\n${'═'.repeat(46)}`);

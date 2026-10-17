@@ -1,6 +1,6 @@
 // v0.1.11 回归：修复卡片按钮显示不稳定（6 个根因）
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 const codeOnly = src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
 
@@ -85,7 +85,8 @@ check('按钮常驻（v0.1.15 起不隐藏）', /\.wb-card-dl\{[\s\S]{0,400}?opa
 console.log('\n═══ 版本 & 老功能 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本号两处一致', vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('有 SKIP 原因统计', /const SKIP = \{ noId: 0, noMedia: 0, tooSmall: 0 \}/.test(src));
 check('三处跳过都计数', /SKIP\.noId\+\+/.test(src) && /SKIP\.noMedia\+\+/.test(src) && /SKIP\.tooSmall\+\+/.test(src));
 check('每次 enhanceCards 重置计数', /SKIP\.noId = 0; SKIP\.noMedia = 0; SKIP\.tooSmall = 0;/.test(src));

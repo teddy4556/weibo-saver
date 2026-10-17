@@ -7,3 +7,6 @@ versions/
 *.log
 .DS_Store
 node_modules/
+
+# 临时备份目录（重构前快照，本地留即可）
+.bak-*/

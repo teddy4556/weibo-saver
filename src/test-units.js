@@ -1,6 +1,6 @@
 // 单元验证：把脚本里的纯函数抽出来真跑
 const fs = require('fs');
-const src = fs.readFileSync('/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js', 'utf8');
+const src = fs.readFileSync(require('./_target.js').TARGET, 'utf8');
 
 // ── 抽 CRC32 ──
 const crc32Src = src.match(/const CRC_TABLE = \(\(\) => \{[\s\S]*?\}\)\(\);[\s\S]*?function crc32\(bytes\) \{[\s\S]*?\n    \}/)[0];

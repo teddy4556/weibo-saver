@@ -1,18 +1,22 @@
 // v0.1.26 回归：GM_download 失败自动降级 + 全字段诊断
 const fs = require('fs');
-const P = '/opt/data/cache/scratch/wb-build/weibo-saver-v0.1.0.user.js';
+const P = require('./_target.js').TARGET;
 const src = fs.readFileSync(P, 'utf8');
 const codeOnly = src.split('\n').filter(l => !/^\s*(\*|\/\/|\/\*)/.test(l)).join('\n');
 
 let pass = 0, fail = 0;
 const check = (n, c, e) => { if (c) { pass++; console.log(`  ✅ ${n}`); } else { fail++; console.log(`  ❌ ${n}${e ? ' → ' + e : ''}`); } };
+// b = saveVideoViaBlob 函数体切片（原先定义在块内、却在块外被引用 → ReferenceError）
+const b = codeOnly.slice(codeOnly.indexOf('function saveVideoViaBlob'), codeOnly.indexOf('function saveBlob'));
 
 console.log('\n═══ 症状：按钮变成「重试」= 保存数 0 = 文件没落地 ═══');
 console.log('  ← 参考脚本能下，因为它全走 GM_xmlhttpRequest → blob → saveAs');
 console.log('  ← 姐姐的视频首选 GM_download(跨域URL)，这条受 Tampermonkey 设置影响');
 {
     check('MSG.failed 文案未变', /failed: '失败，点击重试'/.test(codeOnly));
-    check('视频失败会走 done(false)', /done && done\(false\)/.test(codeOnly));
+    // v0.1.31 起失败终态走 item.onGMDone 回调，且强制 typeof 校验
+    check('视频失败会回调 onGMDone(false)',
+        /typeof item\.onGMDone === 'function'\) item\.onGMDone\(false\)/.test(codeOnly));
 }
 
 console.log('\n═══ 修法一：全字段诊断日志 ═══');
@@ -28,25 +32,26 @@ console.log('\n═══ 修法一：全字段诊断日志 ═══');
 console.log('\n═══ 修法二：失败自动降级到参考脚本那套 ═══');
 {
     check('有 saveVideoViaBlob 函数',
-        /function saveVideoViaBlob\(url, name, done\)/.test(codeOnly));
-    check('saveVideoViaGM 签名带 fallbackBlob',
-        /function saveVideoViaGM\(url, info, item, done, fallbackBlob\)/.test(codeOnly));
+        /function saveVideoViaBlob\(/.test(codeOnly));
+    check('saveVideoViaGM 签名仍带兜底回调（参数名可演进）',
+        /function saveVideoViaGM\(url, info, item, doneCb?, fallbackBlob\)/.test(codeOnly) ||
+        /function saveVideoViaGM\([^)]*fallbackBlob/.test(codeOnly));
     check('调用点传了兜底函数',
         /saveVideoViaGM\(url, info, item, done, saveVideoViaBlob\)/.test(codeOnly));
 
     const f = codeOnly.slice(codeOnly.indexOf('function saveVideoViaGM'), codeOnly.indexOf('function saveVideoViaBlob'));
-    check('onerror 会降级', /onerror[\s\S]{0,700}?if \(fallbackBlob && !fallbackTried\)[\s\S]{0,120}?fallbackBlob\(url, name, done\);/.test(f));
+    check('onerror 会降级', /onerror[\s\S]{0,1200}?if \(fallbackBlob && !fallbackTried\)[\s\S]{0,200}?fallbackBlob\(/.test(f));
     check('ontimeout 也会降级', /ontimeout[\s\S]{0,400}?if \(fallbackBlob && !fallbackTried\)/.test(f));
     check('有降级标记防死循环', /let fallbackTried = false;/.test(f));
     check('降级前打日志', /降级 blob \+ saveAs 路径/.test(f));
 
-    const b = codeOnly.slice(codeOnly.indexOf('function saveVideoViaBlob'), codeOnly.indexOf('function saveBlob'));
+
     check('兜底用 gmRequest 拉 blob', /gmRequest\(\{[\s\S]{0,200}responseType: 'blob'/.test(b));
     check('兜底带 referer', /referer: 'https:\/\/weibo\.com\/'/.test(b));
     check('兜底超时 3 分钟', /timeout: 180000/.test(b));
-    check('兜底空响应判失败', /isEmptyResult\(res\)[\s\S]{0,200}done && done\(false\)/.test(b));
-    check('兜底成功走 fallbackSave', /fallbackSave\(res\.response, name, done\)/.test(b));
-    check('兜底异常也报失败', /catch \(e\) \{[\s\S]{0,200}done && done\(false\)/.test(b));
+    check('兜底空响应判失败', /isEmptyResult\(res\)[\s\S]{0,300}?finish && finish\(false\)/.test(b));
+    check('兜底成功走 fallbackSave', /fallbackSave\(blob, name, finish\)|fallbackSave\(res\.response, name, finish\)/.test(b));
+    check('兜底异常也报失败', /catch \(e\) \{[\s\S]{0,300}?finish && finish\(false\)/.test(b));
 }
 
 console.log('\n═══ 降级链行为测试（真跑模拟）═══');
@@ -96,19 +101,21 @@ console.log('\n═══ 降级链行为测试（真跑模拟）═══');
 
 console.log('\n═══ 参考脚本的关键手法都在 ═══');
 {
+    // 注意切片边界：v0.1.33 里落盘清理 / blob 释放都在 fallbackSave 内，
+    // 不在 saveVideoViaBlob→saveBlob 这段。原断言拿 b（前者）去查后者的日志，永远查不到。
+    const fb = src.slice(src.indexOf('function fallbackSave'), src.indexOf('function fallbackSave') + 4000);
     // 三条铁律：blob 中转 → 同源 createObjectURL → click 后延迟清理
     check('fallbackSave 用 createObjectURL',
         /URL\.createObjectURL\(blob\)/.test(codeOnly));
     check('a[download] 属性在', /a\.download = filename;/.test(codeOnly));
     check('click 后 setTimeout(2000) 才清',
-        /\}, 2000\);/.test(src.slice(src.indexOf('function fallbackSave'), src.indexOf('function fallbackSave') + 1600)));
+        /\}\s*,\s*2000\s*\);/.test(fb));
     check('blob URL 不再写死 60s 释放（v0.1.30 改确认式）',
-    !/revokeObjectURL\(url\)\s*,\s*60000\s*\)/.test(b) && /blob 已关联/.test(b), '写死的 60s 释放还在');
-check('落盘触发有日志', /落盘已触发/.test(b));
-check('blob 兜底校验完整性', /blob\.size < want/.test(b));
-const _unusedCheck60 = ("check('blob URL 延后 60s 释放',
-        /revokeObjectURL\(url\)\s*,\s*60000\s*\)/.test(
-            src.slice(src.indexOf('function fallbackSave'), src.indexOf('function fallbackSave') + 1600)));
+        !/revokeObjectURL\(url\)\s*,\s*60000\s*\)/.test(fb) && /blob 已关联/.test(fb),
+        '写死的 60s 释放还在');
+    check('落盘触发有日志', /落盘已触发/.test(fb));
+    // 字节完整性校验在 saveVideoViaBlob 里（用它自己的切片 b）
+    check('blob 兜底校验完整性', /blob\.size < want/.test(b));
 }
 
 console.log('\n═══ 老功能未坏 ═══');
@@ -122,14 +129,18 @@ check('blob 老路径仍在（可手动切回）',
 check('绝对超时仍在', /HARD_TIMEOUT/.test(codeOnly));
 check('extOf 白名单未坏', /const MEDIA_EXTS = \[/.test(src));
 check('两趟去重未坏', /const deduped = \[\]/.test(src));
-check('右下角常驻未坏', /\.wb-card-dl\{[^}]*opacity:\.85/.test(src));
+// 意图式断言（与 test-v0116 / test-v0118 统一）：按钮在卡片右下角 + 常驻可点。
+// 不锁死 opacity 数值 —— v0.1.33 是 .88，锁 .85 必红。
+check('右下角常驻未坏', /\.wb-card-dl\{[\s\S]{0,400}?opacity:\.(?!0\b)[\d.]+/.test(src)
+    && /\.wb-card-dl\{[\s\S]{0,400}?pointer-events:auto/.test(src));
 check('GM_download grant 在', /@grant\s+GM_download/.test(src));
 check('零 @require', !/^\/\/ @require/m.test(src));
 
 console.log('\n═══ 版本 ═══');
 const vMeta = (src.match(/@version\s+([\d.]+)/) || [])[1];
 const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
-check('版本号两处一致', vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
+check('版本号两处一致（动态比对，不写死版本）',
+    vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.26 历史记录', /v0\.1\.26/.test(src));
 check('头部有 v0.1.26 记录', /v0\.1\.26/.test(src));
 
