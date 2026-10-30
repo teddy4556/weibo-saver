@@ -46,7 +46,9 @@ console.log('\n═══ 正确链路：视频仍走 blob，只是落盘改原�
 
 console.log('\n═══ files 携带类型标记，流到落盘 ═══');
 {
-    check('files.push 带 isVideo', /files\.push\(\{ name, data: blob, isVideo: !!item\.isTop \}\)/.test(codeOnly));
+    check('files.push 带 isVideo', /files\.push\(\{ name, data: blob, isVideo: isVideoItem \}\)/.test(codeOnly));
+    // v0.1.35:isVideo 判定放宽到 isTop || isLive(livephoto 的视频半也要走原生)
+    check('isVideo 含 live 半（isTop || isLive）', /const isVideoItem = !!\(item\.isTop \|\| item\.isLive\)/.test(codeOnly));
     check('批量落盘传 forceNative',
         /saveBlob\(f\.data, safeDownloadName\(f\.name\), null, \(ok\) => \{[\s\S]{0,120}?\}, !!f\.isVideo\)/.test(codeOnly));
     check('saveOne 也支持 isVideo',
@@ -74,7 +76,8 @@ console.log('\n═══ 开关菜单文案要改（不再有「直连」选项�
 {
     check('菜单里不再出现「直连」', !/直连（推荐）/.test(src));
     check('菜单提到视频走原生', /视频走原生/.test(src));
-    check('失效的 videoBlob 开关已彻底移除', !/videoBlob/.test(src));
+    // v0.1.35:头部注释里提到了 videoBlob 这个历史名词 → 只查代码行
+    check('失效的 videoBlob 开关已彻底移除', !src.split('\n').filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//')).some((l) => /videoBlob/.test(l)));
     check('换成视频封面开关', /vidCover: 'wb_video_cover'/.test(src) && /视频封面/.test(src));
 }
 

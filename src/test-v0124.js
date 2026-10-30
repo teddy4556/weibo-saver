@@ -12,8 +12,11 @@ console.log('  ← 用户实测：`collectResources: 1 项 → 01.mp4` 之后连
 console.log('  ← 说明 await queue.start() 悬住，后续代码全没执行');
 {
     check('队列后有打点日志', /队列完成 收集=\$\{files\.length\}/.test(codeOnly));
-    check('打点含视频项/视频blob 计数',
-        /视频项=\$\{mediaItems\.filter/.test(codeOnly) && /视频blob=\$\{files\.filter/.test(codeOnly));
+    // v0.1.35:日志口径改了 —— 「视频项」拆成「顶层视频」+「live视频」
+    check('打点含顶层视频/live视频/视频blob 计数',
+        /顶层视频=\$\{mediaItems\.filter/.test(codeOnly) &&
+        /live视频=\$\{liveCount\}/.test(codeOnly) &&
+        /视频blob=\$\{videoFileCount\}/.test(codeOnly));
 }
 
 console.log('\n═══ 修法一：绝对超时（Promise.race）═══');
@@ -113,7 +116,7 @@ check('默认直落', /isVideoViaBlob: false,/.test(codeOnly));
 
 console.log('\n═══ 老功能未坏 ═══');
 check('图片仍走 GM_download', /if \(typeof GM_download === 'function'\) \{/.test(codeOnly));
-check('图片仍进 files 批量落盘', /files\.push\(\{ name, data: blob, isVideo: !!item\.isTop \}\)/.test(codeOnly));
+check('图片仍进 files 批量落盘', /files\.push\(\{ name, data: blob, isVideo: isVideoItem \}\)/.test(codeOnly));
 check('v0.1.22 教训仍记录在案', /只对同源 URL 生效/.test(src));
 check('saveDirect 仍已删除', !/function saveDirect\(/.test(codeOnly));
 check('延迟清理仍保留（a.remove 不能紧跟 click）', /\}, 2000\);/.test(src));

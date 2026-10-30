@@ -19,7 +19,7 @@ check('用 base.replace 摘掉扩展名再拼', src.includes("base.replace(/\\.[
 console.log('\n═══ safeDownloadName 行为（真跑）═══');
 const cases = [
     // [输入, 期望, 说明]
-    ['微博#奶油不肉#5506998232#03.mp4', '微博#奶油不肉#5506998232#03.mp4', '普通视频'],
+    ['微博#奶油不肉#5506998232#20261015#183000#03.mp4', '微博#奶油不肉#5506998232#20261015#183000#03.mp4', '普通视频'],
     ['微博#奶油不肉#5506998232#03.mp4-live', '微博#奶油不肉#5506998232#03.mp4', '★ 本次 bug 的输入'],
     ['微博#a#1#02-live.mp4', '微博#a#1#02-live.mp4', '正确形态不动'],
     ['微博#a#1#03.jpg', '微博#a#1#03.jpg', '普通图片'],
@@ -39,21 +39,21 @@ console.log('\n═══ 端到端命名链（真跑）═══');
     const INVALID = {'\\':'＼','/':'／','|':'｜','<':'＜','>':'＞',':':'：','*':'＊','?':'？','"':'＂',"'":'＇','‌':'','‍':'','⁠':'','﻿':'','\n':' ','\r':' ','\t':' '};
     const cleanName = (x) => String(x == null ? '' : x).split('').map(c => INVALID[c] !== undefined ? INVALID[c] : c).join('').replace(/\s+/g, ' ').trim();
     const renderName = (tpl, info, index, ext) => {
-        const ctx = { username: info.userName, uid: info.userID, mblogid: info.mblogid, time: info.time, index, ext };
+        const ctx = { author: info.userName, username: info.userName, uid: info.userID, mblogid: info.mblogid, date: info.date, time: info.time, index, ext };
         let n = String(tpl).replace(/\{(\w+)\}/g, (m, k) => { const v = ctx[k]; return v == null || v === '' ? 'x' : String(v); });
         n = cleanName(n);
         if (!n || n === 'x') n = '微博-' + (info.mblogid || 'unknown');
         if (ext && !/\.[A-Za-z0-9]{2,4}$/.test(n)) n += '.' + ext;
         return n.slice(0, 180);
     };
-    const TPL = '微博#{username}#{uid}#{index}.{ext}';
-    const info = { userName: '奶油不肉', userID: '5506998232', mblogid: 'Xyz' };
+    const TPL = '微博#{author}#{mblogid}#{date}#{time}#{index}';
+    const info = { userName: '奶油不肉', userID: '5506998232', mblogid: '5506998232', date: '20261015', time: '183000' };
 
     const e2e = [
-        ['普通图片', false, 'jpg', '微博#奶油不肉#5506998232#03.jpg'],
-        ['普通视频', false, 'mp4', '微博#奶油不肉#5506998232#03.mp4'],
-        ['live视频', true, 'mp4', '微博#奶油不肉#5506998232#03-live.mp4'],
-        ['live图片', true, 'jpg', '微博#奶油不肉#5506998232#03-live.jpg'],
+        ['普通图片', false, 'jpg', '微博#奶油不肉#5506998232#20261015#183000#03.jpg'],
+        ['普通视频', false, 'mp4', '微博#奶油不肉#5506998232#20261015#183000#03.mp4'],
+        ['live视频', true, 'mp4', '微博#奶油不肉#5506998232#20261015#183000#03-live.mp4'],
+        ['live图片', true, 'jpg', '微博#奶油不肉#5506998232#20261015#183000#03-live.jpg'],
     ];
     e2e.forEach(([label, isLive, ext, want]) => {
         const base = renderName(TPL, info, '03', ext);
@@ -74,7 +74,7 @@ const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
 check('版本号两处一致（动态比对，不写死版本）',
     vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.10 历史记录', /v0\.1\.10 变更/.test(src));
-check('命名模板默认值未动', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('命名模板默认值未动', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 check('落盘错峰未动', /i \+= batchSize/.test(src));
 check('三路识别未动', /DIAG\.href/.test(src) && /DIAG\.attr/.test(src) && /DIAG\.media/.test(src));
 check('GM_download 在', /@grant\s+GM_download/.test(src));

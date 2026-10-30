@@ -28,8 +28,15 @@ console.log('\n═══ ② 内存层淘汰（tasks 只增不减的老问题）
     const blk = codeOnly.slice(i, codeOnly.indexOf('function setTask('));
     check('超过上限才动手', /if \(tasks\.size <= HISTORY_MAX\) return;/.test(blk));
     check('进行中的永不淘汰', /busy = all\.filter\(\(t\) => t\.message !== MSG\.done\)/.test(blk));
+    // v0.1.35：口径**不变**（分别封顶），改的是日志措辞 + 一个真隐患。
+    //
+    // 重要澄清：「历史裁剪 9 → 9 条（上限 6）」**不是 bug**。
+    // 分别封顶 = 已完成≤6 + 进行中≤6,内存层最多 12 条。
+    // 9 条 = 3 完成 + 6 进行中,各自都没超上限 → 本来就不该裁,数字不变是正确行为。
+    // v0.1.35 改的是:① 日志措辞说清是分别封顶 ② 进行中的永不淘汰(原版会砍)。
     check('已完成只留最新 N 条', /finished\.slice\(-HISTORY_MAX\)/.test(blk));
-    check('进行中也封顶', /busy\.slice\(-HISTORY_MAX\)/.test(blk));
+    check('进行中的全留(不砍进行中)', /const keep = new Set\(busy\.map\(\(t\) => t\.id\)\)/.test(blk));
+    check('已完成按 HISTORY_MAX 封顶', /finished\.slice\(-HISTORY_MAX\)/.test(blk));
     check('真的 delete', /tasks\.delete\(t\.id\)/.test(blk));
     check('setTask 里调用', /trimTasks\(\);\s*\n\s*renderPanel\(\);/.test(codeOnly));
     check('裁剪有日志', /历史裁剪/.test(blk));
@@ -37,41 +44,41 @@ console.log('\n═══ ② 内存层淘汰（tasks 只增不减的老问题）
 
 console.log('\n═══ ② 真跑：淘汰行为 ═══');
 {
-    const trim = (tasks, MAX = 6) => {
-        const all = Object.values(tasks);
-        // 未超限：kept 统一返回数组（别返回 Map，否则断言量纲不一致）
-        if (all.length <= MAX) return { kept: all, removed: 0 };
-        const busy = all.filter(t => t.message !== 'done');
-        const finished = all.filter(t => t.message === 'done');
-        const keep = new Set(finished.slice(-MAX).map(t => t.id));
-        busy.slice(-MAX).forEach(t => keep.add(t.id));
-        return {
-            kept: all.filter(t => keep.has(t.id)),
-            removed: all.length - keep.size,
-        };
+    // v0.1.35：改成**真跑源码里的 trimTasks**（整 IIFE 拆开执行），
+    // 不再在测试里重写一份实现 —— 测试重写实现 = 测的是测试自己。
+    const { runTrim } = require('./_trim-harness.js');
+    const trim = (tasksObj) => {
+        const r = runTrim(tasksObj);
+        return { kept: r.kept, removed: r.removed };
     };
+    const { MSG } = require('./_trim-harness.js').runTrim({});
     const mk = (n, msg) => Object.fromEntries(
         Array.from({ length: n }, (_, i) => [String(i), { id: String(i), message: msg }]));
 
-    let r = trim(mk(20, 'done'));
+    let r = trim(mk(20, MSG.done));
     check('20 条全完成 → 剩 6', r.kept.length === 6, `${r.kept.length}`);
     check('保留的是最新 6 条',
         r.kept.map(t => Number(t.id)).sort((a, b) => a - b).join(',') === '14,15,16,17,18,19',
         r.kept.map(t => t.id).join(','));
 
-    const mixed = { ...mk(10, 'done'), '10': { id: '10', message: '保存中' },
+    const mixed = { ...mk(10, MSG.done), '10': { id: '10', message: '保存中' },
                     '11': { id: '11', message: '下载中' } };
     r = trim(mixed);
-    const busyKept = r.kept.filter(t => t.message !== 'done');
-    const finKept = r.kept.filter(t => t.message === 'done');
+    const busyKept = r.kept.filter(t => t.message !== MSG.done);
+    const finKept = r.kept.filter(t => t.message === MSG.done);
     check('10完成+2进行中 → 进行中全留', busyKept.length === 2, `${busyKept.length}`);
-    check('已完成封顶 6 条', finKept.length === 6, `${finKept.length}`);
+    // v0.1.35:分别封顶 —— 已完成留 6(不因进行中占位而减少),进行中留 2
+    // 内存层上限 12 = 完成 6 + 进行中 6
+    check('已完成留 6 条（分别封顶,不因进行中占位而减少）', finKept.length === 6, `${finKept.length}`);
+    check('内存层总量 = 完成6 + 进行中2 = 8（上限 12）', r.kept.length === 8, `${r.kept.length}`);
 
-    r = trim(mk(4, 'done'));
+    r = trim(mk(4, MSG.done));
     check('未超限不误删', r.removed === 0 && r.kept.length === 4, `删了 ${r.removed}`);
 
     r = trim(mk(10, '下载中'));
-    check('全进行中也封顶 6', r.kept.length === 6, `${r.kept.length}`);
+    // v0.1.35:进行中的**永不淘汰**。原版 busy.slice(-HISTORY_MAX) 会砍掉 4 条 →
+    // 被砍的 task 它的 onGMDone 回调回来找不到记录 → 面板进度条永远卡在「下载中」。
+    check('全进行中 10 条全保留（不砍进行中,宁可暂时超限）', r.kept.length === 10, `${r.kept.length}`);
 }
 
 console.log('\n═══ ③ 收起抓手：双色（用户反馈红黑分不清）═══');

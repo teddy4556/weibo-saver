@@ -68,7 +68,7 @@ check('三路识别未坏', /DIAG\.href/.test(src) && /DIAG\.attr/.test(src) && 
 check('单视频修复未坏', /async function topMediaUrlAsync/.test(src));
 check('live 命名修复未坏', src.includes("+ `-live.${ext}`"));
 check('落盘错峰未坏', /i \+= batchSize/.test(src));
-check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 check('GM_download 在', /@grant\s+GM_download/.test(src));
 check('零 @require', !/^\/\/ @require/m.test(src));
 

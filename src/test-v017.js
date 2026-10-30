@@ -51,7 +51,7 @@ const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
 check('版本号两处一致（动态比对，不写死版本）',
     vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.7 历史记录', /v0\.1\.7 变更/.test(src));
-check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 check('GM_download 仍在', /@grant\s+GM_download/.test(src));
 check('零 @require', !/^\/\/ @require/m.test(src));
 

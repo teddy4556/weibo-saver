@@ -92,7 +92,7 @@ check('注释说明了 WHY 不能全并发', /不能直接全并发|直接全并
 check('拉数据并发未动', /createQueue\(cfg\.isImageHD \? 3 : 5\)/.test(src));
 check('批量串行未动', /await downloadWeibo\(id\);/.test(src) && /await sleep\(600\)/.test(src));
 check('m3u8 并发未动', /const queue = createQueue\(6\)/.test(src));
-check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 check('GM_download 仍在', /@grant\s+GM_download/.test(src));
 check('零 @require', !/^\/\/ @require/m.test(src));
 check('无拖拽命名残留', !/wb-namebox|wb-on-list|wb-off-list/.test(codeOnly));

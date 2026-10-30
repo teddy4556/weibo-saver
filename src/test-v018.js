@@ -30,10 +30,10 @@ check('代码里无 NAME_KEY', !/NAME_KEY/.test(codeOnly));
 check('无旧「重置命名模板」菜单', !/重置命名模板/.test(codeOnly));
 
 console.log('\n═══ 新模板体系完好 ═══');
-check('NAME_TPL_DEFAULT 保留', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('NAME_TPL_DEFAULT 保留', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 check('NAME_TPL_KEY 保留', /const NAME_TPL_KEY = 'wb_name_template'/.test(src));
 check('renderName 保留', /function renderName\(info, index, ext\)/.test(src));
-check('占位符列表保留', /const NAME_TPL_FIELDS = \['username', 'uid', 'mblogid', 'time', 'index', 'ext'\]/.test(src));
+check('占位符列表保留', /const NAME_TPL_FIELDS = \['author', 'username', 'mblogid', 'date', 'time', 'datetime', 'uid', 'index', 'ext'\]/.test(src));
 check('设置模板菜单保留', /GM_registerMenuCommand\('🏷 设置命名模板'/.test(src));
 check('预览菜单保留', /GM_registerMenuCommand\('👀 预览命名效果'/.test(src));
 check('恢复默认菜单保留', /GM_registerMenuCommand\('↩️ 恢复默认命名模板'/.test(src));

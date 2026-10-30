@@ -92,7 +92,7 @@ check('blob 路径有 verbose 日志', /fetchBlob 第\$\{attempt\}次请求/.tes
 check('绝对超时仍在', /HARD_TIMEOUT/.test(codeOnly));
 check('队列后打点仍在', /队列完成 收集=\$\{files\.length\}/.test(codeOnly));
 check('图片仍走 GM_download', /if \(typeof GM_download === 'function'\) \{/.test(codeOnly));
-check('图片仍进 files', /files\.push\(\{ name, data: blob, isVideo: !!item\.isTop \}\)/.test(codeOnly));
+check('图片仍进 files', /files\.push\(\{ name, data: blob, isVideo: isVideoItem \}\)/.test(codeOnly));
 check('GM_download grant 在', /@grant\s+GM_download/.test(src));
 check('extOf 白名单未坏', /const MEDIA_EXTS = \[/.test(src));
 check('两趟去重未坏', /const deduped = \[\]/.test(src));

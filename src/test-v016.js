@@ -44,7 +44,7 @@ check('源 C: data-mid', /card\.getAttribute\('data-mid'\)/.test(src));
 }
 
 console.log('\n═══ 调用点统一改用 extractId ═══');
-check('enhanceCards 用 extractId', /function enhanceCards\(\)[\s\S]{0,700}const id = extractId\(card\)/.test(src));
+check('enhanceCards 用 extractId', /function enhanceCards\(cardsIn\)[\s\S]{0,700}const id = extractId\(card\)/.test(src));
 check('injectCardButtons 用 extractId', /const id = card\.dataset\.wbId \|\| extractId\(card\)/.test(src));
 check('injectPickers 用 extractId', /const id = card\.dataset\.wbId \|\| extractId\(card\)/.test(src));
 check('不再直接 idFromHref(findMblogLink', !/idFromHref\(\(findMblogLink/.test(src));
@@ -67,7 +67,7 @@ const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
 check('版本号两处一致（动态比对，不写死版本）',
     vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.6 记录', /v0\.1\.6 变更/.test(src));
-check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 check('卡片按钮仍在', /function injectCardButtons/.test(src));
 check('GM_download 仍在', /@grant\s+GM_download/.test(src));
 check('零 @require', !/^\/\/ @require/m.test(src));

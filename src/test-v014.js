@@ -29,7 +29,14 @@ check('批量按钮有 on 高亮态', /el\.classList\.toggle\('on', !!cfg\[def\.
 
 console.log('\n═══ 关批量不影响下载入口（用户原问题）═══');
 // flush 无条件跑 enhanceCards
-check('flush 无条件跑 enhanceCards', /function flush\(\) \{[\s\S]{0,200}enhanceCards\(\);[\s\S]{0,120}if \(cfg\.isBatch\) injectPickers\(\);/.test(src));
+// v0.1.35:flush 里 collectCards 只扫一次,结果传给 enhanceCards / injectCardButtons
+check('flush 无条件跑 enhanceCards', /function flush\(\) \{[\s\S]{0,300}enhanceCards\(cards\)[\s\S]{0,200}if \(cfg\.isBatch\) injectPickers\(\);/.test(src));
+{
+    // v0.1.35:flush 里 collectCards 只调一次(原来两个函数各调一次 = 每次 flush 扫两遍 DOM)
+    const fb = src.match(/function flush\(\) \{[\s\S]*?\n    \}/);
+    const n = fb ? (fb[0].match(/collectCards\(\)/g) || []).length : -1;
+    check('flush 只扫一次 collectCards', n === 1, `实际 ${n} 次`);
+}
 check('injectPickers 只在批量开时跑', /if \(cfg\.isBatch\) injectPickers\(\);/.test(src));
 // applyBatchMode(false) 不碰 wb-tap
 const apm = src.slice(src.indexOf('function applyBatchMode'), src.indexOf('function injectPickers'));
@@ -52,7 +59,7 @@ check('版本号两处一致（动态比对，不写死版本）',
 check('头部有 v0.1.4 历史记录', /v0\.1\.4 变更/.test(src));
 check('零 @require', !/^\/\/ @require/m.test(src));
 check('GM_download grant 仍在', /@grant\s+GM_download/.test(src));
-check('命名模板未被改坏', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('命名模板未被改坏', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 check('批量仍串行（未擅自改并发）', /for \(const id of ids\) \{[\s\S]{0,120}await downloadWeibo\(id\)/.test(src));
 
 console.log(`\n${'═'.repeat(46)}`);

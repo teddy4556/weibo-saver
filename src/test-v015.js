@@ -7,8 +7,8 @@ let pass = 0, fail = 0;
 const check = (n, c, e) => { if (c) { pass++; console.log(`  ✅ ${n}`); } else { fail++; console.log(`  ❌ ${n}${e ? ' → ' + e : ''}`); } };
 
 console.log('\n═══ 按钮注入 ═══');
-check('injectCardButtons 已定义', /function injectCardButtons\(\)/.test(src));
-check('flush 里挂载', /function flush\(\) \{[\s\S]{0,200}enhanceCards\(\);\s*injectCardButtons\(\);/.test(src));
+check('injectCardButtons 已定义', /function injectCardButtons\(cardsIn\)/.test(src));
+check('flush 里挂载', /function flush\(\) \{[\s\S]{0,300}enhanceCards\(cards\);\s*injectCardButtons\(cards\);/.test(src));
 check('用 createElement 造 button', /document\.createElement\('button'\)/.test(src));
 check('class 用 wb-card-dl', /btn\.className = 'wb-card-dl'/.test(src));
 check('有 type=button 防表单提交', /btn\.type = 'button'/.test(src));
@@ -53,7 +53,7 @@ check('批量优先于开关', /on && !cfg\.isBatch/.test(src));
 console.log('\n═══ 开关 ═══');
 check('cfg key 存在', /isCardBtn: 'wb_card_btn'/.test(src));
 check('默认开', /isCardBtn: true,/.test(src));
-check('注入前检查开关', /function injectCardButtons\(\) \{\s*if \(!cfg\.isCardBtn\) return;/.test(src));
+check('注入前检查开关', /function injectCardButtons\(cardsIn\) \{\s*if \(!cfg\.isCardBtn\) return;/.test(src));
 check('面板有按钮', /id="wb-cardbtn"/.test(src));
 check('PANEL_LABELS 已登记', /'#wb-cardbtn': \{ key: 'isCardBtn'/.test(src));
 check('面板点击联动显隐', /if \(sel === '#wb-cardbtn'\) applyCardBtnVisibility/.test(src));
@@ -65,7 +65,7 @@ const vConst = (src.match(/const VERSION = '([\d.]+)'/) || [])[1];
 check('版本号两处一致（动态比对，不写死版本）',
     vMeta === vConst && /^\d+\.\d+\.\d+$/.test(vMeta || ''), `${vMeta}/${vConst}`);
 check('头部有 v0.1.5 历史记录', /v0\.1\.5 变更/.test(src));
-check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 // v0.1.15：时间戳入口已移除
 check('GM_download 仍在', /@grant\s+GM_download/.test(src));
 check('零 @require', !/^\/\/ @require/m.test(src));

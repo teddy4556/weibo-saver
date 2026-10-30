@@ -31,10 +31,10 @@ const { renderName, extractInfo, cleanName, extOf, pad, get } = wb;
 
 // 模板变量：renderName 读的是模块内的 nameTemplate，通过改 store 无法影响，
 // 所以直接用「替换测试」——把 renderName 的 body 抽出来跑等价验证。
-const TPL = '微博#{username}#{uid}#{index}.{ext}';
+const TPL = '微博#{author}#{mblogid}#{date}#{time}#{index}';
 
 function render(tpl, info, index, ext) {
-    const ctx = { username: info.userName, uid: info.userID, mblogid: info.mblogid, time: info.time, index, ext };
+    const ctx = { author: info.userName, username: info.userName, uid: info.userID, mblogid: info.mblogid, date: info.date, time: info.time, datetime: info.datetime, index, ext };
     let name = String(tpl).replace(/\{(\w+)\}/g, (m, key) => {
         const v = ctx[key];
         return v === undefined || v === null || v === '' ? 'x' : String(v);
@@ -46,25 +46,25 @@ function render(tpl, info, index, ext) {
 }
 
 console.log('\n═══ 默认模板 ═══');
-check('默认模板字符串正确', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('默认模板字符串正确', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 check('模板走 GM_setValue 可配', /let nameTemplate = GM_getValue\(NAME_TPL_KEY, NAME_TPL_DEFAULT\)/.test(src));
-check('6 个占位符已定义', /const NAME_TPL_FIELDS = \['username', 'uid', 'mblogid', 'time', 'index', 'ext'\]/.test(src));
+check('9 个占位符已定义', /const NAME_TPL_FIELDS = \['author', 'username', 'mblogid', 'date', 'time', 'datetime', 'uid', 'index', 'ext'\]/.test(src));
 check('渲染函数存在', typeof wb.renderName === 'function');
 
 console.log('\n═══ 渲染：真实用例 ═══');
-const info = { userName: '示例博主', userID: '1234567890', mblogid: 'ABCdefGHI', time: '2026-10-15 18:30' };
+const info = { userName: '示例博主', userID: '1234567890', mblogid: 'ABCdefGHI', date: '20261015', time: '183000', datetime: '2026-10-15 18:30' };
 [
-    [['01', 'jpg'], '微博#示例博主#1234567890#01.jpg'],
-    [['02', 'jpg'], '微博#示例博主#1234567890#02.jpg'],
-    [['10', 'png'], '微博#示例博主#1234567890#10.png'],
-    [['01', 'mp4'], '微博#示例博主#1234567890#01.mp4'],
+    [['01', 'jpg'], '微博#示例博主#ABCdefGHI#20261015#183000#01.jpg'],
+    [['02', 'jpg'], '微博#示例博主#ABCdefGHI#20261015#183000#02.jpg'],
+    [['10', 'png'], '微博#示例博主#ABCdefGHI#20261015#183000#10.png'],
+    [['01', 'mp4'], '微博#示例博主#ABCdefGHI#20261015#183000#01.mp4'],
 ].forEach(([[i, e], want]) => {
     const got = render(TPL, info, i, e);
     check(`render(#${i}, .${e})`, got === want, `得到 ${got}，期望 ${want}`);
 });
 
 console.log('\n═══ 边界 ═══');
-check('缺 username 降级成 x', render(TPL, { userID: '123' }, '01', 'jpg') === '微博#x#123#01.jpg');
+check('缺 username 降级成 x', render(TPL, { userID: '123' }, '01', 'jpg') === '微博#x#x#x#x#01.jpg');
 check('全缺有兜底', render(TPL, {}, '01', 'jpg').length > 0);
 check('模板不含 {ext} 自动补扩展名', render('微博#{username}#{index}', info, '01', 'jpg') === '微博#示例博主#01.jpg');
 check('非法字符被清洗', !/[\\/:*?"<>|]/.test(render(TPL, { userName: 'a/b:c*d?e"f<g>h|i', userID: '1' }, '01', 'jpg')));
@@ -80,14 +80,16 @@ const rtStatus = {
     user: { screen_name: '转发者', idstr: '111' },
     retweeted_status: {
         created_at: 'Fri Oct 09 08:00:00 +0800 2026',
+        mblogid: 'ORIG999',
         user: { screen_name: '原博主', idstr: '999' },
     },
 };
 const ei = extractInfo(rtStatus);
 check('昵称取原博主（非转发者）', ei.userName === '原博主', ei.userName);
 check('uid 取原博主', ei.userID === '999', ei.userID);
-check('时间取原博', /2026-10-09/.test(ei.time), ei.time);
-check('转发命名用原博', render(TPL, ei, '01', 'jpg') === '微博#原博主#999#01.jpg');
+check('mblogid 取原博', ei.mblogid === 'ORIG999', ei.mblogid);
+check('时间取原博', ei.date === '20261009' && ei.time === '080000', `${ei.date}/${ei.time}`);
+check('转发命名用原博', render(TPL, ei, '01', 'jpg') === '微博#原博主#ORIG999#20261009#080000#01.jpg');
 
 const plain = { created_at: 'Mon Oct 12 10:00:00 +0800 2026', user: { screen_name: '本人', idstr: '222' } };
 const pei = extractInfo(plain);

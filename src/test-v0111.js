@@ -98,7 +98,7 @@ check('诊断输出三项原因', /识别不出微博 id/.test(src) && /判定�
     check('旧断言留存', n === 6, `${n} 条`);
     check('列明「显示不稳定」', /显示不稳定/.test(seg));
 }
-check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{username\}#\{uid\}#\{index\}\.\{ext\}'/.test(src));
+check('命名模板未坏', /const NAME_TPL_DEFAULT = '微博#\{author\}#\{mblogid\}#\{date\}#\{time\}#\{index\}'/.test(src));
 check('live 命名修复未坏', src.includes("+ `-live.${ext}`"));
 check('落盘错峰未坏', /i \+= batchSize/.test(src));
 check('三路识别未坏', /DIAG\.href/.test(src) && /DIAG\.attr/.test(src) && /DIAG\.media/.test(src));

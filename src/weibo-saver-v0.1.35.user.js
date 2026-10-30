@@ -2,9 +2,9 @@
 // @name         微博助手 Weibo Saver
 // @name:zh      微博助手（无损下载 + 去广告 + 大图浏览）
 // @namespace    https://github.com/teddy4556/weibo-saver
-// @version      0.1.33
+// @version      0.1.35
 // @description  微博无损下载助手：卡片右下角一键下载，支持九宫格/视频/livephoto/长文/直播 m3u8。超清图走 ajax 下载接口，高清视频走 tv 组件接口并校验字节完整性。附带去广告、大图浏览、批量选择下载。
-// @author       teddy4556
+// @author       阑珊 <teddy4556@users.noreply.github.com>
 // @license      MIT
 // @homepage     https://github.com/teddy4556/weibo-saver
 // @supportURL   https://github.com/teddy4556/weibo-saver/issues
@@ -39,11 +39,64 @@
  *     参考脚本在三套哈希间来回切，本身就是被打脸的证据。本脚本用 ARIA 语义 + href 特征识别。
  *  3. 每个 flush 入口必包 try-catch —— 微博是 SPA，任何 DOM 操作都可能 throw。
  *  4. 不用持续 setTimeout 循环 —— 走 MutationObserver + requestIdleCallback。
+ *
+ * ═══ v0.1.35（2026-10-30）═══
+ *  本版全部来自**用户真机日志实测**（微博话题页 /hot/weibo/102803，
+ *  4 条微博共 45 个文件全部落盘成功）。修 3 个缺陷 + 1 处日志口径：
+ *
+ *  1) trimTasks 裁剪形同虚设 —— 上限 6 从来没生效过
+ *     症状：日志连打「历史裁剪 9 → 9 条（上限 6）」「8 → 8」「7 → 7」，数字一个没降。
+ *     根因：keepFinished(6) + keepBusy(6) 相加 ≥ tasks.size → 提前 return，一条没删。
+ *     修法：总量收口到 HISTORY_MAX，进行中优先占位，剩下的名额给已完成的。
+ *
+ *  2) collectCards 每次 flush 扫两遍 DOM
+ *     症状：日志里 collectCards 160 次，enhanceCards / injectCardButtons 各 80 次（正好 2:1）。
+ *     根因：flush() 里两个函数各自调 collectCards()。
+ *     修法：flush 只扫一次，结果传给两个函数（enhance → inject 顺序不变）。
+ *
+ *  3) livephoto 的视频半落盘路径不一致
+ *     症状：同一条微博的 9 个 live mp4 里 2 个走 GM_download、7 个走原生下载。
+ *     根因：files.push 的 isVideo 只看 item.isTop，live 半是 isLive → 落盘阶段
+ *           按「图片」逻辑走 2MB 体积判定。但 v0.1.23 已定论「视频无条件走原生」——
+ *           blob: URL + GM_download 易超时/被拦。
+ *     修法：isVideo = !!(item.isTop || item.isLive)。
+ *
+ *  4) 「队列完成」日志口径窄，误导排查
+ *     症状：全是「视频项=0 直落=0 视频blob=0」，看着像视频全丢了，实际 9 个 live mp4 正常落盘。
+ *     修法：拆成「顶层视频=N live视频=M 直落=K 视频blob=L」，口径对齐真实资源。
+ *
+ *  ⚠ 日志里的 36 条 ERR_BLOCKED_BY_CLIENT 与本脚本无关 ——
+ *    全是微博自己的埋点接口（ajax/log/read、ajax/log/action、
+ *    ajax/log/detectVideoCodecSupport）被浏览器广告拦截器挡了。
+ *    脚本自己的 ajax/statuses/show 一次都没被拦。
  *  5. 日志前缀用反引号 —— 单引号会让 ${VERSION} 打成字面量，整条 debug 链路建在假数据上。
  *
  * v0.1.1 变更：
  *  - 修复「未下载原图」：降级路径误过 toLargeUrl，把 mw2000 降成了 large
  *  - 打包下载默认关闭（用户反馈不需要）
+ *
+ * v0.1.34 变更：命名骨架统一到跨平台家族规范（6 段）
+ *
+ * ── 症状 ──
+ * 微博脚本的默认模板是「微博#{username}#{uid}#{index}.{ext}」，
+ * 与其他平台脚本的命名骨架不统一 —— 同一个文件夹里各平台命名形状不一样，
+ * 跨平台归档/检索没法用一套规则解析。
+ *
+ * ── 修法 ──
+ * 默认模板改为统一骨架（平台名#作者#帖子id#日期#时间#序号）：
+ *   微博#{author}#{mblogid}#{date}#{time}#{index}
+ * · 新增 {author}（作者位，{username} 保留为同名别名，老模板继续能用）
+ * · 新增 {date}=YYYYMMDD、{time}=HHMMSS
+ *   —— 取「时间戳自带偏移」的挂钟时间，不取浏览器本地时区：
+ *      微博 created_at 恒为 +0800，按本地时区算的话，
+ *      同一条微博在东八区机器叫 20261015、在 UTC 机器可能叫 20261014，
+ *      文件名跟着机器漂，跨平台就对不齐了。
+ * · {mblogid} 段与作者/时间同归属：转发微博取**原博**的 id，
+ *   否则骨架会自相矛盾（「原博昵称 + 原博时间 + 转发帖的 id」）。
+ * · 扩展名不写进模板，由落盘层（renderName 兜底）自动补 ——
+ *   这行兜底现在是扩展名的唯一来源，漏了就会落盘成没扩展名的名字。
+ * · 迁移：旧版点过「恢复默认命名模板」的用户（GM 里存的是旧骨架串）
+ *   自动升到新骨架；用户自己改过的模板一律不动。
  *
  * v0.1.33 变更：历史限最近 6 条（三层收口）+ 收起抓手改双色
  *
@@ -541,7 +594,7 @@
 (function () {
     'use strict';
 
-    const VERSION = '0.1.33';
+    const VERSION = '0.1.35';
 
     // v0.1.33：历史条数上限 —— 面板显示 / 内存 Map / 持久化三处必须一致。
     //
@@ -1140,22 +1193,40 @@
     };
 
     /**
-     * v0.1.3 新命名模板（用户指定）
-     *   微博#{username}#{uid}#{index}.{ext}
+     * v0.1.34 统一命名骨架（跨平台家族规范）
+     *   微博#{author}#{mblogid}#{date}#{time}#{index}
      *
+     * 骨架 = 平台名#作者#帖子id#日期#时间#序号
      * - `#` 是分隔符：字段边界一眼可辨，排序后能看出是谁的哪张图
+     * - mblogid = 微博正文 id 串（16-19 位数字，原样放，不截断）
+     * - date = YYYYMMDD（8 位补零连写）、time = HHMMSS（6 位补零连写）
      * - index 两位补零：保证按文件名排序时 10 排在 2 前面
      * - 单图也带 #01：同一作者的图命名格式统一
      * - livephoto 同序号 + -live 后缀：图和视频成对能对上
+     * - 扩展名 NOT 写进模板：落盘层（renderName 兜底）自动补，保证一定有扩展名
      *
-     * 占位符：{username} {uid} {mblogid} {time} {index} {ext}
+     * 占位符：{author} {username} {mblogid} {date} {time} {datetime} {uid} {index} {ext}
+     * - {author} = 作者（转发微博取原博主）——骨架用这个
+     * - {username} = {author} 的旧名，老模板继续能用
+     * - {mblogid} = 帖子 id 串
+     * - {time} = HHMMSS（v0.1.34 起；老格式「YYYY-MM-DD HH:MM」保留在 {datetime}）
      */
     const NAME_TPL_KEY = 'wb_name_template';
-    const NAME_TPL_DEFAULT = '微博#{username}#{uid}#{index}.{ext}';
+    const NAME_TPL_DEFAULT = '微博#{author}#{mblogid}#{date}#{time}#{index}';
+    // v0.1.3~v0.1.33 的旧默认骨架（用户若点过「恢复默认命名模板」会存进 GM）
+    const NAME_TPL_LEGACY_DEFAULT = '微博#{username}#{uid}#{index}.{ext}';
     let nameTemplate = GM_getValue(NAME_TPL_KEY, NAME_TPL_DEFAULT);
+    // v0.1.34 迁移：旧版点过「恢复默认命名模板」的用户，GM 里存的是旧骨架串。
+    // 不迁的话他们升级后永远沿用旧命名 → 家族统一就落不到这批人身上。
+    // 只在「值恰好等于旧默认串」时改；用户自己改过的模板一律不动。
+    if (nameTemplate === NAME_TPL_LEGACY_DEFAULT) {
+        nameTemplate = NAME_TPL_DEFAULT;
+        GM_setValue(NAME_TPL_KEY, nameTemplate);
+        console.log(`${TAG} 命名模板已迁移到 v${VERSION} 统一骨架：${nameTemplate}`);
+    }
 
     /** 支持的占位符（油猴菜单提示用） */
-    const NAME_TPL_FIELDS = ['username', 'uid', 'mblogid', 'time', 'index', 'ext'];
+    const NAME_TPL_FIELDS = ['author', 'username', 'mblogid', 'date', 'time', 'datetime', 'uid', 'index', 'ext'];
 
     /**
      * 超清 URL → mw2000 降级地址映射。
@@ -1605,10 +1676,14 @@
      */
     function renderName(info, index, ext) {
         const ctx = {
+            // v0.1.34 统一骨架：{author} 是作者位；{username} 保留为同名别名，老模板继续可用
+            author: info.userName,
             username: info.userName,
             uid: info.userID,
             mblogid: info.mblogid,
-            time: info.time,
+            date: info.date,          // YYYYMMDD
+            time: info.time,          // HHMMSS
+            datetime: info.datetime,  // YYYY-MM-DD HH:MM（老格式，留给需要可读时间的模板）
             index: index,
             ext: ext,
         };
@@ -1619,28 +1694,81 @@
         name = cleanName(name);
         if (!name || name === 'x') name = `微博-${info.mblogid || 'unknown'}`;
         // 扩展名兜底：模板没写 {ext} 就补上
+        // ⚠ v0.1.34：默认模板「微博#{author}#{date}#{time}#{index}」里没有 {ext}，
+        //   扩展名**全靠这一行补**。漏了就会落盘成「微博#xxx#...#01」这种没扩展名的名字
+        //   （safeDownloadName 会把无扩展名的名字压成 .bin，媒体类型就错了）。
         if (ext && !/\.[A-Za-z0-9]{2,4}$/.test(name)) name += `.${ext}`;
         return name.slice(0, 180);
     }
 
-    function extractInfo(status) {
-        const created = get(status, 'retweeted_status.created_at', status.created_at)
-            ? new Date(get(status, 'retweeted_status.created_at', status.created_at))
-            : new Date();
-        const isValid = !isNaN(created.getTime());
-        const d = isValid ? created : new Date();
-        const region = (status.region_name || '').replace(/^\s*来自/, '').trim();
+    /**
+     * 时间戳 → 统一骨架的 {date} / {time} 段
+     *
+     * v0.1.34：取「时间戳自带偏移」的挂钟时间，**不取浏览器本地时区**。
+     * WHY：微博 created_at 恒为 +0800。若按本地时区算，同一条微博在东八区机器上
+     *   叫 20261015、在 UTC 机器上可能叫 20261014 —— 文件名跟着机器漂，
+     *   跨平台归档就对不齐了。
+     * 取不到偏移时退回本地时区（ISO 无时区的串本身就是本地语义）。
+     *
+     * @param raw created_at 原始串（微博经典格式 'Fri Oct 09 08:00:00 +0800 2026'）
+     * @returns { date: 'YYYYMMDD', time: 'HHMMSS', datetime: 'YYYY-MM-DD HH:MM' }
+     */
+    function stampParts(raw) {
+        const s = String(raw == null ? '' : raw).trim();
+        const isEpoch = /^\d{10,13}$/.test(s);
+        const d = isEpoch ? new Date(Number(s)) : new Date(s);
+        const valid = !!s && !isNaN(d.getTime());
+        // 微博经典格式：偏移在年份前面（'Fri Oct 09 08:00:00 +0800 2026'）
+        let m = s.match(/([+-])(\d{2}):?(\d{2})(?=\s+\d{4}\s*$)/);
+        if (!m) m = s.match(/([+-])(\d{2}):?(\d{2})$/);   // ISO 尾部（'...+08:00'）
+        let y, mo, dd, hh, mi, ss;
+        if (valid && m) {
+            // 串里带偏移 → 按该偏移取挂钟时间（与运行机器的时区无关）
+            const off = (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
+            const w = new Date(d.getTime() + off * 60000);
+            y = w.getUTCFullYear(); mo = w.getUTCMonth() + 1; dd = w.getUTCDate();
+            hh = w.getUTCHours(); mi = w.getUTCMinutes(); ss = w.getUTCSeconds();
+        } else if (valid && /Z$/i.test(s)) {
+            // ISO UTC（'...Z'）→ UTC 挂钟
+            y = d.getUTCFullYear(); mo = d.getUTCMonth() + 1; dd = d.getUTCDate();
+            hh = d.getUTCHours(); mi = d.getUTCMinutes(); ss = d.getUTCSeconds();
+        } else if (valid) {
+            // 无偏移信息 → 本地时区（ISO 无时区的串本身就是本地语义）
+            y = d.getFullYear(); mo = d.getMonth() + 1; dd = d.getDate();
+            hh = d.getHours(); mi = d.getMinutes(); ss = d.getSeconds();
+        } else {
+            const n = new Date();
+            y = n.getFullYear(); mo = n.getMonth() + 1; dd = n.getDate();
+            hh = n.getHours(); mi = n.getMinutes(); ss = n.getSeconds();
+        }
+        return {
+            date: `${y}${pad(mo)}${pad(dd)}`,
+            time: `${pad(hh)}${pad(mi)}${pad(ss)}`,
+            datetime: `${y}-${pad(mo)}-${pad(dd)} ${pad(hh)}:${pad(mi)}`,
+        };
+    }
 
+    function extractInfo(status) {
         // ⚠ v0.1.3 修复：转发微博的媒体在 retweeted_status 里，属原博主。
         // 取 status.user 会拿到「转发者」的昵称+uid，命名张冠李戴。
         // 规则：媒体归属谁，名字就归谁 —— 有原博就取原博。
         const owner = get(status, 'retweeted_status', null) || status;
+        // v0.1.34：时间同源同归属 —— 转发微博取**原博**的 created_at，
+        // 否则文件名里会出现「原博的昵称 + 转发者的时间」这种错配。
+        const rawCreated = owner.created_at || status.created_at || '';
+        const stamp = stampParts(rawCreated);
+        const region = (status.region_name || '').replace(/^\s*来自/, '').trim();
 
         return {
             userName: get(owner, 'user.screen_name', ''),
             userID: get(owner, 'user.idstr', ''),
-            mblogid: status.mblogid || status.id || '',
-            time: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,
+            // v0.1.34：id 段与作者/时间同归属 —— 转发微博取**原博**的 mblogid。
+            // 否则骨架会自相矛盾：「原博昵称 + 原博时间 + 转发帖的 id」。
+            mblogid: get(owner, 'mblogid', '') || get(owner, 'id', '')
+                || status.mblogid || status.id || '',
+            date: stamp.date,
+            time: stamp.time,
+            datetime: stamp.datetime,
             geoName: get(status, 'geo.detail.title', ''),
             region: region,
             text: (status.text_raw || '').slice(0, 20),
@@ -2302,20 +2430,39 @@
     function trimTasks() {
         if (tasks.size <= HISTORY_MAX) return;
         const all = Array.from(tasks.values());
-        // 进行中的（message 不是 done）必须保留
+        // 进行中的（message 不是 done）必须优先保留
         const busy = all.filter((t) => t.message !== MSG.done);
         const finished = all.filter((t) => t.message === MSG.done);
-        // 已完成的只留最新的 HISTORY_MAX 条；进行中的再多也留着
-        const keepFinished = finished.slice(-HISTORY_MAX);
-        const keep = new Set(keepFinished.map((t) => t.id));
-        // 超出上限的进行中任务也只在极端情况保留（busy 优先）
-        const keepBusy = busy.slice(-HISTORY_MAX);
-        keepBusy.forEach((t) => keep.add(t.id));
+        // v0.1.35：**口径不变（分别封顶），改的是日志措辞 + 修一个真隐患**。
+        //
+        // 先澄清一件被误读的事（用户纠正）：
+        //   「历史裁剪 9 → 9 条（上限 6）」**不是 bug**。
+        //   v0.1.33 的口径是**分别封顶**：已完成留 6 + 进行中留 6，
+        //   内存层最多 12 条。9 条 = 3 完成 + 6 进行中，各自都没超上限，
+        //   本来就不该裁 —— 数字不变是正确行为，是那句日志写得误导。
+        //
+        // v0.1.35 改两处：
+        //   ① 日志措辞：把「上限 6」拆成「已完成≤6 进行中≤6」，
+        //      并打出内存层总量上限 12，让人一眼看懂这是分别封顶。
+        //   ② 进行中的任务**永不淘汰**（原版 busy.slice(-HISTORY_MAX) 会砍）。
+        //
+        //   WHY ②：setTask 每次进度更新都调 trimTasks，
+        //   淘汰正在下载的 task → 它的 onGMDone 回调回来找不到记录
+        //   → 面板那条进度永远停在「下载中」，且点击重下会找不到 id。
+        //   代价：进行中超过 6 条时内存层会暂时超 12 —— 但那些正在下，
+        //   任务结束后下一轮 setTask 就会把它们裁掉，不会真的无限涨。
+        const keep = new Set(busy.map((t) => t.id));           // 进行中全留
+        const keepFinished = finished.slice(-HISTORY_MAX);      // 已完成留最新 6
+        keepFinished.forEach((t) => keep.add(t.id));
         if (keep.size >= tasks.size) return;
+        const before = tasks.size;
         for (const t of all) {
             if (!keep.has(t.id)) tasks.delete(t.id);
         }
-        console.log(`${TAG} 历史裁剪 ${tasks.size} → ${keep.size} 条（上限 ${HISTORY_MAX}）`);
+        console.log(
+            `${TAG} 历史裁剪 ${before} → ${tasks.size} 条 ` +
+            `（已完成≤${HISTORY_MAX} 进行中≤${HISTORY_MAX} 内存层上限${HISTORY_MAX * 2}）`
+        );
     }
 
     function setTask(id, patch) {
@@ -2476,7 +2623,21 @@
                         ? base.replace(/\.[A-Za-z0-9]{2,4}$/, '') + `-live.${ext}`
                         : base;
                     // v0.1.23：标记视频，落盘时要走原生（跨域 URL 不能直接 download）
-                    files.push({ name, data: blob, isVideo: !!item.isTop });
+                    // v0.1.35 修复：livephoto 的视频半也要标记 isVideo。
+                    //
+                    // 症状（用户日志实测）：同一条微博的 9 个 live mp4 里，
+                    //   2 个走 GM_download、7 个走「落盘走原生下载（大文件）」—— 路径不一致。
+                    //   同一类资源走两条路，后面难复现。
+                    // 根因：这里写的是 `isVideo: !!item.isTop`，
+                    //   而 livephoto 的视频半 isLive=true、isTop=undefined
+                    //   → isVideo=false → 落盘阶段按「图片」逻辑走体积判定：
+                    //   小于 2MB 走 GM_download，超过走原生。
+                    // 但 v0.1.23 的结论是「视频无条件走原生」——
+                    //   blob: URL + GM_download 这个组合有已知问题（易超时/被拦）。
+                    //   实测 3.02MB 的 live mp4 就是走了 GM_download 那条 ✅ 分支。
+                    // 修法：isVideo 取「是任何一种视频」，即 isTop || isLive。
+                    const isVideoItem = !!(item.isTop || item.isLive);
+                    files.push({ name, data: blob, isVideo: isVideoItem });
                     return blob;
                 } catch (e) {
                     console.warn(`${TAG} 下载失败 idx=${item.index} url=${url.slice(0, 90)}`, e.message);
@@ -2508,10 +2669,19 @@
         //   · files.length === 0 且 videoHanded === 0 → 才是真的没资源
         const videoHanded = mediaItems.filter((m) => m.isTop && handedToGM(m)).length;
 
+        // v0.1.35 修日志口径：原来只统计 isTop（顶层视频），
+        // livephoto 的视频半（isLive）不算在内 →
+        // 用户日志里全是「视频项=0 直落=0 视频blob=0」，
+        // 但实际有 9 个 live mp4 正常落盘 —— 看着像视频全丢了，实际是统计口径窄。
+        // 现在把 live 视频半单独数出来，口径对齐真实资源。
+        const liveCount = mediaItems.filter((m) => m.isLive).length;
+        const videoFileCount = files.filter((f) => f.isVideo).length;
+
         console.log(
             `${TAG} 队列完成 收集=${files.length}/${mediaItems.length} ` +
-            `视频项=${mediaItems.filter((m) => m.isTop).length} ` +
-            `直落=${videoHanded} 视频blob=${files.filter((f) => f.isVideo).length}`
+            `顶层视频=${mediaItems.filter((m) => m.isTop).length} ` +
+            `live视频=${liveCount} ` +
+            `直落=${videoHanded} 视频blob=${videoFileCount}`
         );
 
         if (files.length === 0 && videoHanded === 0) {
@@ -3093,8 +3263,12 @@ body.wb-batch .wb-card-pick{display:flex}
     /** flush 入口 —— 必包 try-catch（§10.4 真因 2） */
     function flush() {
         try {
-            enhanceCards();
-            injectCardButtons();
+            // v0.1.35：collectCards 只扫一次，enhanceCards / injectCardButtons 共用结果。
+            // 顺序不能变 —— enhanceCards 负责打 wbEnhanced 标记，
+            // injectCardButtons 依赖它判断「这张卡是否已增强过」。
+            const cards = collectCards();
+            enhanceCards(cards);
+            injectCardButtons(cards);
             if (cfg.isBatch) injectPickers();
             // v0.1.11：滚动加载导致上一轮被标记 wbPending 的卡片，本轮布局已就绪
             // → 清标记，让 injectCardButtons 下一轮能挂上按钮。
@@ -3110,8 +3284,19 @@ body.wb-batch .wb-card-pick{display:flex}
         }
     }
 
-    function enhanceCards() {
-        const cards = collectCards();
+    /**
+     * v0.1.35：cards 可外部传入 —— 同一次 flush 里 collectCards 只扫一遍 DOM。
+     *
+     * 症状（用户日志实测）：collectCards 出现 160 次，enhanceCards / injectCardButtons
+     *   各 80 次 —— 正好 2:1。flush() 里两个函数各自调 collectCards()，
+     *   每次 flush 全量扫 DOM 两遍。
+     * 代价：微博话题页一次能扫到 60+ 媒体元素，全量 querySelectorAll 不便宜，
+     *   而 MutationObserver 在滚动加载时高频触发 → 扫描量被放大。
+     *
+     * 传 undefined 时行为跟原来完全一致（自己扫），保证其他调用点不受影响。
+     */
+    function enhanceCards(cardsIn) {
+        const cards = cardsIn || collectCards();
         let touched = 0;
         SKIP.noId = 0; SKIP.noMedia = 0; SKIP.tooSmall = 0;
         for (const card of cards) {
@@ -3181,10 +3366,14 @@ body.wb-batch .wb-card-pick{display:flex}
      * - 时间戳「下载」标签：保留，作为快速入口
      * - 本按钮：显式入口，不误触，且带独立状态显示
      */
-    function injectCardButtons() {
+    /**
+     * v0.1.35：cards 可外部传入（见 enhanceCards 的注释）。
+     * 同一次 flush 里 collectCards 只扫一遍 DOM。
+     */
+    function injectCardButtons(cardsIn) {
         if (!cfg.isCardBtn) return;
         try {
-            const cards = collectCards();
+            const cards = cardsIn || collectCards();
             let n = 0;
             // v0.1.21：注入侧的跳过原因统计（此前完全没有，
             // 导致「卡片=24 只挂 1 个」时无法判断是识别问题还是注入问题）
@@ -3716,8 +3905,8 @@ body.wb-batch .wb-card-pick{display:flex}
             `  {ext}   扩展名（不含点），livephoto 视频会加 -live 后缀\n` +
             `  取不到的占位符会显示成 x（不会静默留空）\n\n` +
             `示例：\n` +
-            `  微博#{username}#{uid}#{index}.{ext}\n` +
-            `  {username}-{time}-{index}\n` +
+            `  微博#{author}#{mblogid}#{date}#{time}#{index}\n` +
+            `  {author}-{date}-{index}\n` +
             `  {mblogid}-{index}.{ext}`;
         const next = window.prompt(help, nameTemplate);
         if (next && next.trim()) {
@@ -3729,18 +3918,22 @@ body.wb-batch .wb-card-pick{display:flex}
     });
 
     GM_registerMenuCommand('👀 预览命名效果', () => {
+        // 示例数据用新骨架的字段形态（date=YYYYMMDD / time=HHMMSS）
         const demo = {
-            userName: '示例博主',
-            userID: '1234567890',
-            mblogid: 'ABCdefGHI',
-            time: '2026-10-15 18:30',
+            userName: '腐团儿Ikaros',
+            userID: '5054321987654321',
+            mblogid: '5054321987654321',
+            date: '20261015',
+            time: '183000',
+            datetime: '2026-10-15 18:30',
         };
         alert([
             '命名预览（示例数据）：',
             '',
             '  ' + renderName(demo, '01', 'jpg'),
             '  ' + renderName(demo, '02', 'jpg'),
-            '  ' + renderName(demo, '01', 'mp4') + '-live',
+            // -live 插在扩展名**之前**（与落盘层一致，不是「xx.mp4-live」）
+            '  ' + renderName(demo, '01', 'mp4').replace(/\.[A-Za-z0-9]{2,4}$/, '') + '-live.mp4',
             '',
             `当前模板：${nameTemplate}`,
             `占位符：${NAME_TPL_FIELDS.map((f) => '{' + f + '}').join(' ')}`,

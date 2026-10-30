@@ -123,7 +123,7 @@ check('视频首选仍是 GM_download 直落',
     /if \(item\.isTop && cfg\.isVideoViaBlob === false\)/.test(codeOnly));
 check('配置键仍对齐', /isVideoViaBlob: 'wb_video_blob'/.test(src));
 check('图片仍走 GM_download', /if \(typeof GM_download === 'function'\) \{/.test(codeOnly));
-check('图片仍进 files', /files\.push\(\{ name, data: blob, isVideo: !!item\.isTop \}\)/.test(codeOnly));
+check('图片仍进 files', /files\.push\(\{ name, data: blob, isVideo: isVideoItem \}\)/.test(codeOnly));
 check('blob 老路径仍在（可手动切回）',
     /let res = await fetchBlob\(url, \{ verbose: !!item\.isTop \}\)/.test(codeOnly));
 check('绝对超时仍在', /HARD_TIMEOUT/.test(codeOnly));
